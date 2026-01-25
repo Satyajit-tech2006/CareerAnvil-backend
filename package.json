@@ -1,0 +1,35 @@
+{
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "type": "module",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.1.5"
+  },
+  "devDependencies": {
+    "morgan": "^1.10.1",
+    "nodemon": "^3.1.11"
+  },
+  "name": "careeranvil-backend",
+  "version": "1.0.0",
+  "description": "CareerAnvil Backend Server",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Satyajit-tech2006/CareerAnvil-backend.git"
+  },
+  "author": "satyajit2006",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Satyajit-tech2006/CareerAnvil-backend/issues"
+  },
+  "homepage": "https://github.com/Satyajit-tech2006/CareerAnvil-backend#readme"
+}
