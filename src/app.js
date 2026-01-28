@@ -22,9 +22,8 @@ app.use(cors({
     origin: [
         "http://localhost:8080",
         "http://localhost:5173",
-        "https://careeranvil.com",
-        "https://www.careeranvil.com",
-        "https://career-anvil-backend.vercel.app" // Added your Vercel domain
+        "https://career-anvil.vercel.app", 
+        "https://www.career-anvil.vercel.app"
     ],
     credentials: true
 }));

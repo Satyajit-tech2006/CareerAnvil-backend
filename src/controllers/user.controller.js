@@ -206,6 +206,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 
 
 const googleAuthCallback = asyncHandler(async (req, res) => {
+    // ... (Token generation code remains same) ...
     const user = req.user;
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
@@ -213,11 +214,10 @@ const googleAuthCallback = asyncHandler(async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
-    // Force the LIVE frontend URL since you are testing on production
-    const frontendURL = "https://career-anvil.vercel.app";
+    const frontendURL = "https://career-anvil.vercel.app"; // Your live frontend
 
-    // Redirect with tokens in the URL Query String
-    res.redirect(`${frontendURL}/dashboard?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+    // CHANGE: Redirect to /auth-success instead of /dashboard
+    res.redirect(`${frontendURL}/auth-success?accessToken=${accessToken}&refreshToken=${refreshToken}`);
 });
 
 
