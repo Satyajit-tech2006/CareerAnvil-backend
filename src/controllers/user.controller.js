@@ -206,28 +206,18 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 
 
 const googleAuthCallback = asyncHandler(async (req, res) => {
-    // 1. Passport attaches the user to req.user
     const user = req.user;
-
-    // 2. Generate Tokens
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
-    // 3. Save Refresh Token to DB
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
-    // 4. Set Cookies
-    const options = {
-        httpOnly: true,
-        secure: true, // Always true for Vercel/Production
-        sameSite: "None", // Required for cross-site (Backend on Vercel -> Frontend on Vercel)
-    };
+    // Force the LIVE frontend URL since you are testing on production
+    const frontendURL = "https://career-anvil.vercel.app";
 
-    res
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
-        .redirect("https://career-anvil.vercel.app/dashboard"); 
+    // Redirect with tokens in the URL Query String
+    res.redirect(`${frontendURL}/dashboard?accessToken=${accessToken}&refreshToken=${refreshToken}`);
 });
 
 
