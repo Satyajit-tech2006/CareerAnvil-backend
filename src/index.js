@@ -12,7 +12,7 @@ connectDB()
     const server = http.createServer(app);
 
     const allowedOrigins = [
-        "http://localhost:5173",
+        "http://localhost:8080",
         "https://careeranvil.com",
         "https://www.careeranvil.com"
     ];
