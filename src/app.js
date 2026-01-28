@@ -39,10 +39,11 @@ app.use(passport.initialize());
 
 // --- Import Routers ---
 import userRouter from "./routes/user.route.js"; 
+import jobRouter from "./routes/job.route.js";
 
 // --- Mount Routers ---
 app.use("/api/v1/users", userRouter);
-
+app.use("/api/v1/jobs", jobRouter)
 app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
     const message = err.message || "Internal Server Error";
