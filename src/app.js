@@ -22,7 +22,7 @@ app.use(limiter);
 // 3. CORS Configuration
 app.use(cors({
     origin: [
-        "http://localhost:5173", // Frontend Dev
+        "http://localhost:8080", // Frontend Dev
         "https://careeranvil.com", // Production Domain (Placeholder)
         "https://www.careeranvil.com"
     ],
