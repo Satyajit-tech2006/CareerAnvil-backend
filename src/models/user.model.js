@@ -51,16 +51,12 @@ const userSchema = new Schema({
 }, { timestamps: true });
 
 // 1. Pre-save hook to hash password
-userSchema.pre("save", async function(next) {
-    if (!this.isModified("password")) return next();
-    
-    try {
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        next();
-    } catch (error) {
-        next(error);
-    }
+userSchema.pre("save", async function() { // <--- REMOVE 'next' from here
+    if (!this.isModified("password")) return;
+
+    // No need for try-catch here; if it fails, Mongoose handles the error automatically
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
 });
 
 // 2. Method to compare password
