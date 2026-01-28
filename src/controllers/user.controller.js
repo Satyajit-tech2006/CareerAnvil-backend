@@ -204,6 +204,35 @@ const getCurrentUser = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, req.user, "Current user fetched successfully"));
 });
 
+
+const googleAuthCallback = asyncHandler(async (req, res) => {
+    // 1. Passport attaches the user to req.user
+    const user = req.user;
+
+    // 2. Generate Tokens
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    // 3. Save Refresh Token to DB
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    // 4. Set Cookies
+    const options = {
+        httpOnly: true,
+        secure: true, // Always true for Vercel/Production
+        sameSite: "None", // Required for cross-site (Backend on Vercel -> Frontend on Vercel)
+    };
+
+    res
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .redirect("https://career-anvil.vercel.app/dashboard"); 
+});
+
+
+
+
 export {
     registerUser,
     loginUser,
@@ -211,5 +240,6 @@ export {
     refreshAccessToken,
     changeCurrentPassword,
     getCurrentUser,
-    forgotPassword
+    forgotPassword,
+    googleAuthCallback
 };

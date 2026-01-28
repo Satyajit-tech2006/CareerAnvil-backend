@@ -10,6 +10,12 @@ import {
 } from '../controllers/user.controller.js';
 import { verifyJWT } from '../middlewares/auth.middleware.js';
 
+import passport from "passport";
+import "../passport/googleStrategy.js"; 
+import { googleAuthCallback } from "../controllers/user.controller.js";
+
+
+
 const router = Router();
 
 router.route("/register").post(registerUser);
@@ -20,5 +26,24 @@ router.route("/forgot-password").post(forgotPassword);
 router.route("/logout").post(verifyJWT, logoutUser);
 router.route("/change-password").post(verifyJWT, changeCurrentPassword);
 router.route("/current-user").get(verifyJWT, getCurrentUser);
+
+
+
+// 1. Route to Start Google Login
+router.get("/auth/google", passport.authenticate("google", { 
+    scope: ["profile", "email"],
+    session: false // We use JWT, not sessions
+}));
+
+// 2. Callback Route (Google sends user back here)
+router.get("/auth/google/callback", 
+    passport.authenticate("google", { 
+        session: false,
+        failureRedirect: "https://career-anvil.vercel.app/login" // Redirect if failed
+    }), 
+    googleAuthCallback
+);
+
+
 
 export default router;
