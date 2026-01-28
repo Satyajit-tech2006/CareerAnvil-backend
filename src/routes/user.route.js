@@ -35,7 +35,6 @@ router.get("/auth/google", passport.authenticate("google", {
     session: false // We use JWT, not sessions
 }));
 
-// 2. Callback Route (Google sends user back here)
 router.get("/auth/google/callback", 
     passport.authenticate("google", { 
         session: false,
