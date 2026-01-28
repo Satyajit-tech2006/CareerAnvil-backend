@@ -3,37 +3,39 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import passport from "passport"; // Added for Google Auth
 
 const app = express();
 
-// 1. Security Headers
 app.use(helmet()); 
 
-// 2. Rate Limiting (Prevent Brute Force/DDoS)
 const limiter = rateLimit({
-    windowMs: 1 * 60 * 1000, // 1 minute
-    max: 1000, // Limit each IP to 1000 requests per windowMs
+    windowMs: 1 * 60 * 1000, 
+    max: 1000, 
     standardHeaders: true,
     legacyHeaders: false,
     message: "Too many requests, please try again later."
 });
 app.use(limiter);
 
-// 3. CORS Configuration
 app.use(cors({
     origin: [
-        "http://localhost:8080", // Frontend Dev
-        "https://careeranvil.com", // Production Domain (Placeholder)
-        "https://www.careeranvil.com"
+        "http://localhost:8080",
+        "http://localhost:5173",
+        "https://careeranvil.com",
+        "https://www.careeranvil.com",
+        "https://career-anvil-backend.vercel.app" // Added your Vercel domain
     ],
     credentials: true
 }));
 
-// 4. Body Parsers
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
+
+// Initialize Passport (Required for Google Login)
+app.use(passport.initialize());
 
 // --- Import Routers ---
 import userRouter from "./routes/user.route.js"; 
@@ -46,7 +48,6 @@ app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    // Log error stack in development for debugging
     if (process.env.NODE_ENV === "development") {
         console.error(err.stack);
     }
