@@ -39,10 +39,24 @@ app.use(passport.initialize());
 // --- Import Routers ---
 import userRouter from "./routes/user.route.js"; 
 import jobRouter from "./routes/job.route.js";
+import sheetRouter from "./routes/sheet.route.js";
+import sectionRouter from "./routes/section.route.js";
+import sheetItemRouter from "./routes/sheetItem.route.js";
+import progressRouter from "./routes/progress.route.js";
+import enrollmentRouter from "./routes/enrollment.route.js";
+
 
 // --- Mount Routers ---
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/jobs", jobRouter)
+app.use("/api/v1/sheets", sheetRouter);
+app.use("/api/v1/sections", sectionRouter);
+app.use("/api/v1/items", sheetItemRouter);
+app.use("/api/v1/progress", progressRouter);
+app.use("/api/v1/enrollments", enrollmentRouter);
+
+
+
 app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
     const message = err.message || "Internal Server Error";
