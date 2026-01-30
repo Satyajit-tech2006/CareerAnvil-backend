@@ -1,0 +1,44 @@
+import mongoose from "mongoose";
+
+const { Schema, model } = mongoose;
+
+const sheetItemSchema = new Schema({
+    sheetId: {
+        type: Schema.Types.ObjectId,
+        ref: "Sheet",
+        required: true
+    },
+
+    sectionId: {
+        type: Schema.Types.ObjectId,
+        ref: "Section",
+        required: true
+    },
+
+    title: {
+        type: String,
+        required: true
+    },
+
+    type: {
+        type: String,
+        enum: ["problem", "article", "video"],
+        default: "problem"
+    },
+
+    difficulty: {
+        type: String,
+        enum: ["easy", "medium", "hard"]
+    },
+
+    externalLink: String,
+
+    tags: [String],
+
+    order: {
+        type: Number,
+        required: true
+    }
+}, { timestamps: true });
+
+export const SheetItem = model("SheetItem", sheetItemSchema);
