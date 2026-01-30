@@ -1,82 +1,98 @@
-import { createRequire } from 'module';
+import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-const pdf = require('pdf-parse');
-import { JobRole } from '../models/jobRole.model.js';
+const pdf = require("pdf-parse");
+import { JobRole } from "../models/jobRole.model.js";
 
-// Helper to clean text
-const cleanText = (text) => {
-    return text
-        .toLowerCase()
-        .replace(/\n/g, ' ')       // Replace newlines with spaces
-        .replace(/[^\w\s]/g, '')   // Remove special chars (keep letters/numbers)
-        .replace(/\s+/g, ' ')      // Collapse multiple spaces
-        .trim();
+// ---------- Helpers ----------
+
+// Clean and normalize resume text
+const cleanText = (text) =>
+  text
+    .toLowerCase()
+    .replace(/\n/g, " ")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+// Detect common resume sections (basic heuristic)
+const detectSections = (rawText) => {
+  const text = rawText.toLowerCase();
+
+  const hasSkills = /(skills|technical skills)\s*[:\n]/i.test(text);
+  const hasExperience = /(experience|work experience|employment)\s*[:\n]/i.test(text);
+  const hasEducation = /(education|academics)\s*[:\n]/i.test(text);
+  const hasProjects = /(projects|personal projects)\s*[:\n]/i.test(text);
+
+  return { hasSkills, hasExperience, hasEducation, hasProjects };
 };
 
-// Simple Section Detector (Heuristic)
-const detectSections = (text) => {
-    const lower = text.toLowerCase();
-    return {
-        hasSkills: lower.includes('skills') || lower.includes('technologies') || lower.includes('technical stack'),
-        hasExperience: lower.includes('experience') || lower.includes('employment') || lower.includes('work history'),
-        hasEducation: lower.includes('education') || lower.includes('university') || lower.includes('college'),
-        hasProjects: lower.includes('projects')
-    };
-};
+// ---------- Core ATS Logic ----------
 
 export const analyzeResume = async (fileBuffer, roleSlug) => {
-    // 1. Fetch Role Data
-    const roleData = await JobRole.findOne({ slug: roleSlug });
-    if (!roleData) {
-        throw new Error("Invalid Job Role selected");
+  // 1. Fetch role + keywords
+  const roleData = await JobRole.findOne({ slug: roleSlug });
+  if (!roleData) {
+    throw new Error("Invalid job role selected");
+  }
+
+  // 2. Extract PDF text
+  let rawText;
+  try {
+    const parsed = await pdf(fileBuffer);
+    rawText = parsed.text;
+  } catch {
+    throw new Error("Unable to read PDF file");
+  }
+
+  if (!rawText || rawText.trim().length < 50) {
+    throw new Error("Resume text is too short or unreadable");
+  }
+
+  const cleanedText = cleanText(rawText);
+  const sections = detectSections(rawText);
+
+  // 3. Keyword matching (word-boundary safe)
+  const matchedKeywords = [];
+  const missingKeywords = [];
+
+  roleData.keywords.forEach((keyword) => {
+    const regex = new RegExp(`\\b${keyword}\\b`, "i");
+    if (regex.test(cleanedText)) {
+      matchedKeywords.push(keyword);
+    } else {
+      missingKeywords.push(keyword);
     }
+  });
 
-    // 2. Extract Text from PDF
-    let rawText = "";
-    try {
-        const data = await pdf(fileBuffer);
-        rawText = data.text;
-    } catch (error) {
-        throw new Error("Failed to parse PDF file");
-    }
+  // 4. Score calculation
+  const totalKeywords = roleData.keywords.length;
+  const matchedCount = matchedKeywords.length;
 
-    const cleanedText = cleanText(rawText);
-    const sections = detectSections(rawText); // Use raw text for section headers to keep structure
+  // Keyword score: max 80
+  let score = (matchedCount / totalKeywords) * 80;
 
-    // 3. Keyword Matching
-    const matchedKeywords = [];
-    const missingKeywords = [];
+  // Formatting bonuses: max 20
+  if (sections.hasSkills) score += 5;
+  if (sections.hasExperience) score += 5;
+  if (sections.hasEducation) score += 5;
+  if (sections.hasProjects) score += 5;
 
-    roleData.keywords.forEach(keyword => {
-        // We check if the cleaned keyword exists in the cleaned text
-        if (cleanedText.includes(keyword.toLowerCase())) {
-            matchedKeywords.push(keyword);
-        } else {
-            missingKeywords.push(keyword);
-        }
-    });
+  score = Math.min(100, Math.round(score));
 
-    // 4. Calculate Score
-    const totalKeywords = roleData.keywords.length;
-    const matchCount = matchedKeywords.length;
-    
-    // Base score: pure keyword match percentage (up to 80 points)
-    let score = (matchCount / totalKeywords) * 80;
+  // 5. Feedback
+  const suggestions = [];
+  if (!sections.hasSkills) suggestions.push("Add a clear Skills section.");
+  if (!sections.hasExperience) suggestions.push("Mention relevant work or internship experience.");
+  if (!sections.hasProjects) suggestions.push("Include 1–2 technical projects.");
+  if (missingKeywords.length > 5)
+    suggestions.push("Add missing role-specific keywords naturally.");
 
-    // Bonus points for formatting/sections (up to 20 points)
-    if (sections.hasSkills) score += 5;
-    if (sections.hasExperience) score += 5;
-    if (sections.hasEducation) score += 5;
-    if (sections.hasProjects) score += 5;
-
-    // Cap at 100, Round up
-    score = Math.min(100, Math.round(score));
-
-    return {
-        score,
-        role: roleData.title,
-        matchedKeywords,
-        missingKeywords,
-        sectionsDetected: sections
-    };
+  return {
+    score,
+    role: roleData.title,
+    matchedKeywords,
+    missingKeywords,
+    sectionsDetected: sections,
+    suggestions,
+  };
 };
