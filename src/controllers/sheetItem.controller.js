@@ -29,6 +29,8 @@ const createItem = asyncHandler(async (req, res) => {
         type: type || 'problem', // problem, article, video
         difficulty, // easy, medium, hard
         externalLink,
+        youtubeLink, 
+        articleLink, 
         tags,
         order
     });

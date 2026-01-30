@@ -8,33 +8,32 @@ const sheetItemSchema = new Schema({
         ref: "Sheet",
         required: true
     },
-
     sectionId: {
         type: Schema.Types.ObjectId,
         ref: "Section",
         required: true
     },
-
     title: {
         type: String,
         required: true
     },
-
     type: {
         type: String,
         enum: ["problem", "article", "video"],
         default: "problem"
     },
-
     difficulty: {
         type: String,
         enum: ["easy", "medium", "hard"]
     },
-
-    externalLink: String,
+    // The main link to LeetCode/CodingNinjas
+    externalLink: String, 
+    
+    // --- NEW: TUF-style Resources ---
+    youtubeLink: String,  // Admin provided video solution
+    articleLink: String,  // Admin provided reading material/notes
 
     tags: [String],
-
     order: {
         type: Number,
         required: true
