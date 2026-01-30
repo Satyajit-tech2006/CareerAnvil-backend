@@ -45,6 +45,7 @@ import sheetItemRouter from "./routes/sheetItem.route.js";
 import progressRouter from "./routes/progress.route.js";
 import enrollmentRouter from "./routes/enrollment.route.js";
 import noteRouter from "./routes/note.route.js";
+import atsRouter from "./routes/ats.route.js";
 
 
 // --- Mount Routers ---
@@ -56,7 +57,7 @@ app.use("/api/v1/items", sheetItemRouter);
 app.use("/api/v1/progress", progressRouter);
 app.use("/api/v1/enrollments", enrollmentRouter);
 app.use("/api/v1/notes", noteRouter);
-
+app.use("/api/v1/ats", atsRouter);
 
 
 
