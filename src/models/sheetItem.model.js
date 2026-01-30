@@ -32,7 +32,10 @@ const sheetItemSchema = new Schema({
     // --- NEW: TUF-style Resources ---
     youtubeLink: String,  // Admin provided video solution
     articleLink: String,  // Admin provided reading material/notes
-
+    hasNote: {
+        type: Boolean,
+        default: false
+    },
     tags: [String],
     order: {
         type: Number,
