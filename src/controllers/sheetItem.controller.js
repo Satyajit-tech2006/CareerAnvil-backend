@@ -9,8 +9,13 @@ import asyncHandler from '../utils/asyncHandler.js';
 // 1. CREATE ITEM (And update counts)
 // ============================================================================
 const createItem = asyncHandler(async (req, res) => {
-    const { sheetId, sectionId, title, type, difficulty, externalLink, tags, order } = req.body;
+    const { 
+        sheetId, sectionId, title, type, difficulty, 
+        externalLink, youtubeLink, articleLink, 
+        tags, order 
+    } = req.body;
 
+    // Validate required fields
     if (!sheetId || !sectionId || !title || order === undefined) {
         throw new ApiError(400, "Sheet ID, Section ID, Title, and Order are required");
     }
@@ -26,11 +31,12 @@ const createItem = asyncHandler(async (req, res) => {
         sheetId,
         sectionId,
         title,
-        type: type || 'problem', // problem, article, video
-        difficulty, // easy, medium, hard
+        type: type || 'problem', 
+        difficulty, 
         externalLink,
-        youtubeLink, 
-        articleLink, 
+        youtubeLink, // Save Resource
+        articleLink, // Save Resource
+        hasNote: false, // Default
         tags,
         order
     });
