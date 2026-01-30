@@ -1,8 +1,15 @@
 import mongoose from "mongoose";
 import { JobRole } from "../models/jobRole.model.js";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
-dotenv.config();
+// --- FIX START: Point to the root .env file ---
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// Go up two levels: utils -> src -> root
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+// --- FIX END ---
 
 const ROLES_DATA = [
     {
@@ -65,14 +72,15 @@ const ROLES_DATA = [
 
 const seedRoles = async () => {
     try {
-        await mongoose.connect(process.env.MONGODB_URI);
+        // Debugging: Print to ensure it's loaded (will print 'undefined' if it fails)
+        console.log("Connecting to:", process.env.MONGO_URI ? "Database Found" : "URI MISSING");
+
+        await mongoose.connect(process.env.MONGO_URI);
         console.log("Connected to DB...");
 
-        // Clear existing to avoid duplicates during dev
         await JobRole.deleteMany({});
         console.log("Cleared old roles...");
 
-        // Insert new
         await JobRole.insertMany(ROLES_DATA);
         console.log("✅ Successfully seeded 5 Job Roles!");
 
