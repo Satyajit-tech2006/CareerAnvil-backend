@@ -3,6 +3,8 @@ import ApiError from '../utils/ApiError.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import jwt from 'jsonwebtoken';
+import sendEmail from '../utils/email.js'; // Ensure this exists
+
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
         const user = await User.findById(userId);
@@ -20,11 +22,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
 
 const cookieOptions = {
     httpOnly: true,
-    // If in production (HTTPS), 'secure' is true. In dev (HTTP), it's false.
     secure: process.env.NODE_ENV === "production", 
-    
-    // In Prod (different domains), use 'None'. In Dev (localhost), use 'Lax'.
-    // 'Strict' is too aggressive for most modern decoupled apps.
     sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax" 
 };
 
@@ -175,27 +173,81 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
 
+// --- FORGOT PASSWORD (OTP FLOW) ---
 const forgotPassword = asyncHandler(async (req, res) => {
     const { email } = req.body;
+    
+    // Check user
     const user = await User.findOne({ email });
-
     if (!user) {
         throw new ApiError(404, "User not found with this email");
     }
 
-    const resetToken = jwt.sign(
-        { _id: user._id },
-        process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: '20m' } 
-    );
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 20 * 60 * 1000;
+    // Save to DB (Valid for 15 minutes)
+    user.resetPasswordOtp = otp;
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; 
     await user.save({ validateBeforeSave: false });
 
-    return res.status(200).json(
-        new ApiResponse(200, { resetToken }, "Reset token generated (Check Email)")
-    );
+    // HTML Email Message
+    const message = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #dc2626;">Reset Your Password</h2>
+            <p>You requested a password reset for your CareerAnvil account.</p>
+            <p>Your OTP code is:</p>
+            <h1 style="background: #f4f4f5; padding: 10px 20px; display: inline-block; letter-spacing: 5px; border-radius: 5px; font-family: monospace;">${otp}</h1>
+            <p>This code is valid for 15 minutes.</p>
+            <p style="color: #666; font-size: 12px; margin-top: 20px;">If you didn't request this, please ignore this email.</p>
+        </div>
+    `;
+
+    try {
+        await sendEmail({
+            email: user.email,
+            subject: 'CareerAnvil: Your Password Reset OTP',
+            message
+        });
+
+        res.status(200).json(new ApiResponse(200, {}, "OTP sent to email"));
+    } catch (err) {
+        // Rollback if email fails
+        user.resetPasswordOtp = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save({ validateBeforeSave: false });
+        
+        throw new ApiError(500, "Failed to send email. Please try again later.");
+    }
+});
+
+// --- RESET PASSWORD (VERIFY OTP) ---
+const resetPasswordWithOtp = asyncHandler(async (req, res) => {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+        throw new ApiError(400, "Email, OTP, and New Password are required");
+    }
+
+    // Find user with matching Email AND OTP AND Not Expired
+    const user = await User.findOne({
+        email,
+        resetPasswordOtp: otp,
+        resetPasswordExpires: { $gt: Date.now() } // Expiry must be in the future
+    });
+
+    if (!user) {
+        throw new ApiError(400, "Invalid OTP or OTP has expired");
+    }
+
+    // Reset Password
+    user.password = newPassword; 
+    user.resetPasswordOtp = undefined; 
+    user.resetPasswordExpires = undefined;
+    
+    await user.save();
+
+    res.status(200).json(new ApiResponse(200, {}, "Password reset successful"));
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
@@ -204,9 +256,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, req.user, "Current user fetched successfully"));
 });
 
-
 const googleAuthCallback = asyncHandler(async (req, res) => {
-    // ... (Token generation code remains same) ...
     const user = req.user;
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
@@ -214,9 +264,8 @@ const googleAuthCallback = asyncHandler(async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
-    const frontendURL = "https://career-anvil.vercel.app"; // Your live frontend
+    const frontendURL = "https://career-anvil.vercel.app"; 
 
-    // CHANGE: Redirect to /auth-success instead of /dashboard
     res.redirect(`${frontendURL}/auth-success?accessToken=${accessToken}&refreshToken=${refreshToken}`);
 });
 
@@ -249,8 +298,6 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, user, "Account details updated successfully"));
 });
 
-
-
 export {
     registerUser,
     loginUser,
@@ -259,6 +306,7 @@ export {
     changeCurrentPassword,
     getCurrentUser,
     forgotPassword,
+    resetPasswordWithOtp, // Exporting the new controller
     googleAuthCallback,
     updateAccountDetails
 };
