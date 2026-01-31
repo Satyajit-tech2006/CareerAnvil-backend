@@ -17,7 +17,7 @@ const ROLES_DATA = [
      Focus: Fundamentals, Core Languages, Basic Frameworks, Learning Ability
   ========================== */
   {
-    slug: "sde_intern",
+    slug: "software_intern",
     title: "SDE Intern",
     category: "Engineering",
     keywords: [

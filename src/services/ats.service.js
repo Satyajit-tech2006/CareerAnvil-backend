@@ -1,6 +1,8 @@
 import pdf from '../utils/pdfBridge.cjs'; 
 import { JobRole } from '../models/jobRole.model.js';
+import { COMPANY_PACKS } from '../data/companyKeywords.js';
 
+// --- HELPERS ---
 const escapeRegExp = (string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
@@ -25,13 +27,27 @@ const detectSections = (rawText) => {
   };
 };
 
-export const analyzeResume = async (fileBuffer, roleSlug, customKeywords = []) => {
+// Helper: matches a list of keywords against text and returns match count
+const getMatchCount = (text, keywords) => {
+    let count = 0;
+    keywords.forEach(keyword => {
+        const escaped = escapeRegExp(keyword);
+        const prefix = /^\w/.test(keyword) ? "\\b" : "";
+        const suffix = /\w$/.test(keyword) ? "\\b" : "";
+        const regex = new RegExp(`${prefix}${escaped}${suffix}`, "i");
+        if (regex.test(text)) count++;
+    });
+    return count;
+};
 
-  // 1️⃣ Fetch job role (We still need the title)
+// --- MAIN FUNCTION ---
+export const analyzeResume = async (fileBuffer, roleSlug, customKeywords = [], isPremiumUser = false) => {
+  
+  // 1️⃣ Fetch job role
   const roleData = await JobRole.findOne({ slug: roleSlug });
   if (!roleData) throw new Error(`Job Role '${roleSlug}' not found.`);
 
-  // 2️⃣ Extract text
+  // 2️⃣ Extract text (Once)
   if (typeof pdf !== 'function') throw new Error("Critical: PDF Library failed.");
   let rawText = "";
   try {
@@ -50,28 +66,23 @@ export const analyzeResume = async (fileBuffer, roleSlug, customKeywords = []) =
   const cleanedText = cleanText(rawText);
   const sections = detectSections(rawText);
 
-  // 3️⃣ DETERMINE TARGET LIST (The "Override" Logic)
+  // 3️⃣ DETERMINE TARGET LIST (Override Logic)
   let targetList = [];
   let isCustomMode = false;
 
   if (customKeywords && customKeywords.length > 0) {
-      // PRIORITY: If custom keywords exist, use ONLY them.
       targetList = customKeywords;
       isCustomMode = true;
-      console.log("Mode: CUSTOM OVERRIDE (Ignoring DB keywords)");
   } else {
-      // FALLBACK: Use DB keywords
       targetList = roleData.keywords;
-      console.log("Mode: STANDARD DB SCAN");
   }
 
-  // 4️⃣ Keyword Matching
+  // 4️⃣ Main Role Keyword Matching
   const matched = [];
   const missing = [];
 
   targetList.forEach((keyword) => {
     const escaped = escapeRegExp(keyword);
-    // Smart boundary check for C++, .NET, etc.
     const prefix = /^\w/.test(keyword) ? "\\b" : "";
     const suffix = /\w$/.test(keyword) ? "\\b" : "";
     const regex = new RegExp(`${prefix}${escaped}${suffix}`, "i");
@@ -83,22 +94,11 @@ export const analyzeResume = async (fileBuffer, roleSlug, customKeywords = []) =
     }
   });
 
-  // 5️⃣ Scoring Strategy
-  // Max Score = 100
-  // Keywords = 80 points
-  // Sections = 20 points
-  
+  // 5️⃣ Main Scoring
   let score = 0;
-
-  // Keyword Score (Out of 80)
   if (targetList.length > 0) {
       score += (matched.length / targetList.length) * 80;
-  } else {
-      // If list is empty (rare edge case), give full points to be nice? 
-      // Or 0? Let's give 0 to prompt them to add keywords.
   }
-
-  // Formatting Score (Out of 20)
   if (sections.hasSkills) score += 5;
   if (sections.hasExperience) score += 5;
   if (sections.hasEducation) score += 5;
@@ -106,24 +106,35 @@ export const analyzeResume = async (fileBuffer, roleSlug, customKeywords = []) =
 
   score = Math.min(100, Math.round(score));
 
-  // 6️⃣ Construct Response
-  // If Custom Mode: We return the matches in the 'custom' fields
-  // so the Frontend shows the correct cards.
+  // 6️⃣ COMPANY ATS SCAN (Premium Only)
+  let companyMatch = [];
+  if (isPremiumUser) {
+      companyMatch = COMPANY_PACKS.map(company => {
+          const matchCount = getMatchCount(cleanedText, company.keywords);
+          const companyScore = Math.round((matchCount / company.keywords.length) * 100);
+          
+          return {
+              name: company.name,
+              score: companyScore,
+              tier: company.tier
+          };
+      }).sort((a, b) => b.score - a.score); // Return best matches first
+  }
+
+  // 7️⃣ Return Response
   return {
     score,
     role: roleData.title,
-    
-    // Standard Card (Empty if custom mode)
     matchedKeywords: isCustomMode ? [] : matched,
     missingKeywords: isCustomMode ? [] : missing,
-    
-    // Custom Card (Populated if custom mode)
     matchedCustomKeywords: isCustomMode ? matched : [],
     missingCustomKeywords: isCustomMode ? missing : [],
-    
     sectionsDetected: sections,
     suggestions: missing.length > 0 
         ? [`Add missing keywords: ${missing.slice(0, 3).join(', ')}`] 
-        : ["Great keyword match!"]
+        : ["Great keyword match!"],
+    
+    // New Field
+    companyMatch 
   };
 };
