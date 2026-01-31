@@ -20,7 +20,7 @@ const jobRoleSchema = new Schema({
     // The category (e.g., "Engineering", "Data") - useful for filtering dropdowns later
     category: {
         type: String,
-        enum: ['Engineering', 'Data', 'Design', 'Product'],
+        enum: ['Engineering', 'Data', 'Design', 'Product','Infrastructure','Security','Marketing','Sales','HR','Finance'],
         default: 'Engineering'
     },
     // The "Global Fixed Keyword Set"
