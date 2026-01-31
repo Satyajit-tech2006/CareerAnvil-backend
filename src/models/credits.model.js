@@ -20,7 +20,10 @@ const creditsSchema = new Schema({
         type: Number,
         default: 3   // free users: 3 per week or per reset cycle
     },
-
+    jdKeywordsCredits: {
+        type: Number,
+        default: 3   // Free: 3/week, Premium: 50/week
+    },
     resetAt: {
         type: Date,  // when credits reset
         required: true
