@@ -46,7 +46,7 @@ import progressRouter from "./routes/progress.route.js";
 import enrollmentRouter from "./routes/enrollment.route.js";
 import noteRouter from "./routes/note.route.js";
 import atsRouter from "./routes/ats.route.js";
-
+import paymentRouter from "./routes/payment.route.js";
 
 // --- Mount Routers ---
 app.use("/api/v1/users", userRouter);
@@ -58,7 +58,7 @@ app.use("/api/v1/progress", progressRouter);
 app.use("/api/v1/enrollments", enrollmentRouter);
 app.use("/api/v1/notes", noteRouter);
 app.use("/api/v1/ats", atsRouter);
-
+app.use("/api/v1/payments", paymentRouter);
 
 
 app.use((err, req, res, next) => {
