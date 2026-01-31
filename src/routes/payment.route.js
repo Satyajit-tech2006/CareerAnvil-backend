@@ -3,14 +3,25 @@ import { verifyJWT } from '../middlewares/auth.middleware.js';
 import { 
     initiatePayment, 
     submitUTR, 
-    getActivePayment 
+    getActivePayment,
+    adminVerifyPayment,
+    getAllPayments
 } from '../controllers/payment.controller.js';
 
 const router = Router();
+
+// Apply JWT verification to all routes
 router.use(verifyJWT);
 
-router.post("/initiate", initiatePayment);
-router.post("/submit-utr", submitUTR);
-router.get("/active", getActivePayment);
+// --- User Routes ---
+router.post("/initiate", initiatePayment);       // Step 1: Create Intent
+router.post("/submit-utr", submitUTR);           // Step 2: Submit UTR
+router.get("/active", getActivePayment);         // Check Status
+
+// --- Admin Routes ---
+// Note: The controller itself also checks req.user.role !== 'admin' for double security
+router.post("/admin/verify", adminVerifyPayment);
+router.get("/admin/all", getAllPayments); 
+
 
 export default router;
