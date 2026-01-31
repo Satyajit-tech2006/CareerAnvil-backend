@@ -6,10 +6,8 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
 // 1. INITIATE PAYMENT (Create Intent)
-// ... imports
-
 export const initiatePayment = asyncHandler(async (req, res) => {
-    const { plan, billingCycle } = req.body; // <--- Receive billingCycle
+    const { plan, billingCycle } = req.body; 
 
     // 1. Validate Plan
     if (plan !== "premium") {
@@ -47,8 +45,6 @@ export const initiatePayment = asyncHandler(async (req, res) => {
 
     return res.status(201).json(new ApiResponse(201, payment, "Payment initiated"));
 });
-
-// ... rest of the controller
 
 // 2. SUBMIT UTR (User Action)
 export const submitUTR = asyncHandler(async (req, res) => {
@@ -157,6 +153,7 @@ export const adminVerifyPayment = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, {}, `Payment ${action}d successfully`));
 });
 
+// 5. ADMIN: GET ALL PAYMENTS
 export const getAllPayments = asyncHandler(async (req, res) => {
     if (req.user.role !== "admin") throw new ApiError(403, "Admin only");
     
@@ -170,3 +167,16 @@ export const getAllPayments = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, payments, "Payments fetched"));
 });
 
+// 6. ADMIN: CLEANUP PENDING REQUESTS (NEW)
+export const cleanupPendingPayments = asyncHandler(async (req, res) => {
+    // Only Admin can do this (dangerous operation)
+    if (req.user.role !== "admin") throw new ApiError(403, "Admin only");
+
+    // Delete all payments that are STUCK in 'pending_utr' (User opened QR but never paid)
+    // We do NOT delete 'pending_verification' (User paid and waiting for you)
+    const result = await Payment.deleteMany({ status: "pending_utr" });
+
+    return res.status(200).json(
+        new ApiResponse(200, { deletedCount: result.deletedCount }, `Cleaned up ${result.deletedCount} stale payment intents`)
+    );
+});

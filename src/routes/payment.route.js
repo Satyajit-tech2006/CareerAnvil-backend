@@ -5,7 +5,8 @@ import {
     submitUTR, 
     getActivePayment,
     adminVerifyPayment,
-    getAllPayments
+    getAllPayments,
+    cleanupPendingPayments
 } from '../controllers/payment.controller.js';
 
 const router = Router();
@@ -22,6 +23,6 @@ router.get("/active", getActivePayment);         // Check Status
 // Note: The controller itself also checks req.user.role !== 'admin' for double security
 router.post("/admin/verify", adminVerifyPayment);
 router.get("/admin/all", getAllPayments); 
-
+router.post("/admin/cleanup", cleanupPendingPayments); // Cleanup stale payments
 
 export default router;
