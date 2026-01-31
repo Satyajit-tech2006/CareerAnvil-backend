@@ -220,6 +220,34 @@ const googleAuthCallback = asyncHandler(async (req, res) => {
     res.redirect(`${frontendURL}/auth-success?accessToken=${accessToken}&refreshToken=${refreshToken}`);
 });
 
+const updateAccountDetails = asyncHandler(async (req, res) => {
+    const { name, username } = req.body;
+
+    if (!name || !username) {
+        throw new ApiError(400, "Name and Username are required");
+    }
+
+    // Check if username is taken (if changed)
+    const existingUser = await User.findOne({ username: username.toLowerCase() });
+    if (existingUser && existingUser._id.toString() !== req.user._id.toString()) {
+        throw new ApiError(409, "Username already taken");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                name,
+                username: username.toLowerCase()
+            }
+        },
+        { new: true }
+    ).select("-password -refreshToken");
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Account details updated successfully"));
+});
 
 
 
@@ -231,5 +259,6 @@ export {
     changeCurrentPassword,
     getCurrentUser,
     forgotPassword,
-    googleAuthCallback
+    googleAuthCallback,
+    updateAccountDetails
 };
