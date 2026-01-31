@@ -92,4 +92,33 @@ const analyzeResumeController = asyncHandler(async (req, res) => {
     );
 });
 
-export { analyzeResumeController };
+// ... existing imports
+// Add this new function
+const getCreditsController = asyncHandler(async (req, res) => {
+    const user = req.user;
+    
+    let userCredits = await Credits.findOne({ userId: user._id });
+
+    // Self-healing: If credits don't exist yet, create them with defaults
+    if (!userCredits) {
+        const limit = (user.subscription === 'premium' || user.subscription === 'premium pro') ? 50 : 3;
+        userCredits = await Credits.create({ 
+            userId: user._id, 
+            plan: user.subscription,
+            resumeAnalysisCredits: limit,
+            jdKeywordsCredits: limit,
+            resetAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        });
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            resumeCredits: userCredits.resumeAnalysisCredits,
+            jdCredits: userCredits.jdKeywordsCredits, // <--- This is what we need
+            plan: userCredits.plan
+        }, "Credits fetched successfully")
+    );
+});
+
+// Update the export to include it
+export { analyzeResumeController, getCreditsController };

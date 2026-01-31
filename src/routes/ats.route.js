@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { analyzeResumeController } from '../controllers/ats.controller.js';
+import { analyzeResumeController, getCreditsController} from '../controllers/ats.controller.js';
 import { verifyJWT } from '../middlewares/auth.middleware.js';
 import { extractKeywordsController } from '../controllers/jd.controller.js';
 
@@ -28,5 +28,5 @@ router.route('/analyze').post(
 );
 
 router.route("/extract-keywords").post(verifyJWT, extractKeywordsController);
-
+router.route("/credits").get(verifyJWT, getCreditsController);
 export default router;
