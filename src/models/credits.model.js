@@ -12,7 +12,7 @@ const creditsSchema = new Schema({
 
     plan: {
         type: String,
-        enum: ["freemium", "premium","premium pro"],
+        enum: ["freemium", "premium","premium_pro"],
         default: "freemium"
     },
 

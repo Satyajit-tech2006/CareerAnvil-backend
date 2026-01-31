@@ -101,7 +101,7 @@ const getCreditsController = asyncHandler(async (req, res) => {
 
     // Self-healing: If credits don't exist yet, create them with defaults
     if (!userCredits) {
-        const limit = (user.subscription === 'premium' || user.subscription === 'premium pro') ? 50 : 3;
+        const limit = (user.subscription === 'premium' || user.subscription === 'premium pro') ? 30 : 3;
         userCredits = await Credits.create({ 
             userId: user._id, 
             plan: user.subscription,

@@ -19,7 +19,7 @@ const extractKeywordsController = asyncHandler(async (req, res) => {
     // Initialize if missing (Self-healing DB logic)
     if (!userCredits) {
          // Should have been created at signup/login, but just in case
-         const limit = user.subscription === 'premium' ? 50 : 3;
+         const limit = user.subscription === 'premium' ? 30 : 3;
          userCredits = await Credits.create({ 
              userId: user._id, 
              plan: user.subscription,

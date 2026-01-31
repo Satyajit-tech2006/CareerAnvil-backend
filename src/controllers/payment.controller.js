@@ -6,42 +6,49 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
 // 1. INITIATE PAYMENT (Create Intent)
-export const initiatePayment = asyncHandler(async (req, res) => {
-    const { plan } = req.body;
+// ... imports
 
-    // A. Validate Plan
-    if (!["premium", "premium_pro"].includes(plan)) {
+export const initiatePayment = asyncHandler(async (req, res) => {
+    const { plan, billingCycle } = req.body; // <--- Receive billingCycle
+
+    // 1. Validate Plan
+    if (plan !== "premium") {
         throw new ApiError(400, "Invalid plan selected");
     }
 
-    // B. Check for existing active intents
-    // We check for 'pending_utr' OR 'pending_verification'
+    // 2. Determine Amount
+    let amount = 99; // Default Monthly
+    if (billingCycle === "yearly") {
+        amount = 999;
+    }
+
+    // 3. Check for existing active intents
     const existingPayment = await Payment.findOne({
         userId: req.user._id,
         status: { $in: ["pending_utr", "pending_verification"] },
-        expiresAt: { $gt: Date.now() } // Only check non-expired ones
+        expiresAt: { $gt: Date.now() }
     });
 
     if (existingPayment) {
-        // If it's just a pending_utr intent, return it instead of erroring (better UX)
         if (existingPayment.status === "pending_utr") {
+             // Optional: Update amount if they changed cycle? For safety, just return existing.
              return res.status(200).json(new ApiResponse(200, existingPayment, "Resumed existing payment session"));
         }
-        throw new ApiError(409, "You have a payment verification in progress. Please wait.");
+        throw new ApiError(409, "You have a payment verification in progress.");
     }
-
-    const amount = plan === "premium_pro" ? 499 : 299;
 
     const payment = await Payment.create({
         userId: req.user._id,
         plan,
         amount,
-        status: "pending_utr"
-        // expiresAt is auto-set by Schema default
+        status: "pending_utr",
+        note: billingCycle // Optional: store cycle in note
     });
 
     return res.status(201).json(new ApiResponse(201, payment, "Payment initiated"));
 });
+
+// ... rest of the controller
 
 // 2. SUBMIT UTR (User Action)
 export const submitUTR = asyncHandler(async (req, res) => {

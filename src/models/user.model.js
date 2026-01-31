@@ -31,7 +31,7 @@ const userSchema = new Schema({
     },
     subscription: {
         type: String,
-        enum: ['freemium', 'premium'],
+        enum: ['freemium', 'premium', 'premium_pro'],
         default: 'freemium',
     },
     role: {
