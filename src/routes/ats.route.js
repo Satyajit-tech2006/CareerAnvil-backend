@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { analyzeResumeController } from '../controllers/ats.controller.js';
 import { verifyJWT } from '../middlewares/auth.middleware.js';
+import { extractKeywordsController } from '../controllers/jd.controller.js';
 
 const router = Router();
 
@@ -25,5 +26,7 @@ router.route('/analyze').post(
     upload.single('resume'), 
     analyzeResumeController
 );
+
+router.route("/extract-keywords").post(verifyJWT, extractKeywordsController);
 
 export default router;
