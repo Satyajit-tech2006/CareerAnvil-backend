@@ -11,11 +11,6 @@ const analyzeResumeController = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Resume PDF file is required");
     }
     
-    // Debug Logs to verify Frontend FormData order
-    console.log("--- ATS CONTROLLER HIT ---");
-    console.log("Body Role:", req.body.role);
-    console.log("Body Custom Keywords:", req.body.customKeywords);
-
     const { role, customKeywords } = req.body;
     if (!role) {
         throw new ApiError(400, "Job Role (slug) is required");
