@@ -6,6 +6,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
 const analyzeResumeController = asyncHandler(async (req, res) => {
+
     // 1. Validate Input
     if (!req.file) {
         throw new ApiError(400, "Resume PDF file is required");

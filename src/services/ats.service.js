@@ -1,8 +1,6 @@
 import pdf from '../utils/pdfBridge.cjs'; 
 import { JobRole } from '../models/jobRole.model.js';
 
-// --- 1. REGEX HELPER (Prevents crashes) ---
-// Escapes characters like +, ., # so they are treated as text, not code.
 const escapeRegExp = (string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
@@ -12,7 +10,7 @@ const cleanText = (text) => {
   return text
     .toLowerCase()
     .replace(/\n/g, " ")
-    .replace(/[^\w\s\+\.#]/g, " ") // Allow +, ., # in text for C++, C#, .NET
+    .replace(/[^\w\s\+\.#]/g, " ") 
     .replace(/\s+/g, " ")
     .trim();
 };
@@ -28,27 +26,20 @@ const detectSections = (rawText) => {
 };
 
 export const analyzeResume = async (fileBuffer, roleSlug, customKeywords = []) => {
-  console.log("--- ATS SCANNING ---");
-  console.log("1. Role:", roleSlug);
 
-  if (typeof pdf !== 'function') {
-      throw new Error("Critical: PDF Library failed to load.");
-  }
-
-  // 1️⃣ Fetch job role
+  // 1️⃣ Fetch job role (We still need the title)
   const roleData = await JobRole.findOne({ slug: roleSlug });
-  if (!roleData) {
-    throw new Error(`Job Role '${roleSlug}' not found.`);
-  }
+  if (!roleData) throw new Error(`Job Role '${roleSlug}' not found.`);
 
   // 2️⃣ Extract text
+  if (typeof pdf !== 'function') throw new Error("Critical: PDF Library failed.");
   let rawText = "";
   try {
     if (!fileBuffer) throw new Error("File buffer is empty");
     const parsed = await pdf(fileBuffer);
     rawText = parsed.text;
   } catch (err) {
-    console.error("❌ PDF PARSING ERROR:", err);
+    console.error("❌ PDF ERROR:", err);
     throw new Error("Failed to parse PDF.");
   }
 
@@ -59,60 +50,80 @@ export const analyzeResume = async (fileBuffer, roleSlug, customKeywords = []) =
   const cleanedText = cleanText(rawText);
   const sections = detectSections(rawText);
 
-  // 3️⃣ Keyword Matching (SMART REGEX)
-  const matchedKeywords = [];
-  const missingKeywords = [];
+  // 3️⃣ DETERMINE TARGET LIST (The "Override" Logic)
+  let targetList = [];
+  let isCustomMode = false;
 
-  roleData.keywords.forEach((keyword) => {
-    // 1. Escape special chars (Fixes "c++" crash)
+  if (customKeywords && customKeywords.length > 0) {
+      // PRIORITY: If custom keywords exist, use ONLY them.
+      targetList = customKeywords;
+      isCustomMode = true;
+      console.log("Mode: CUSTOM OVERRIDE (Ignoring DB keywords)");
+  } else {
+      // FALLBACK: Use DB keywords
+      targetList = roleData.keywords;
+      console.log("Mode: STANDARD DB SCAN");
+  }
+
+  // 4️⃣ Keyword Matching
+  const matched = [];
+  const missing = [];
+
+  targetList.forEach((keyword) => {
     const escaped = escapeRegExp(keyword);
-    
-    // 2. Smart Boundaries: Only add \b if the edge is a letter/number
-    //    "java" -> \bjava\b
-    //    "c++"  -> \bc\+\+ (No \b at end, because + is not a word char)
-    //    ".net" -> \.net\b (No \b at start)
+    // Smart boundary check for C++, .NET, etc.
     const prefix = /^\w/.test(keyword) ? "\\b" : "";
     const suffix = /\w$/.test(keyword) ? "\\b" : "";
-    
     const regex = new RegExp(`${prefix}${escaped}${suffix}`, "i");
     
     if (regex.test(cleanedText)) {
-      matchedKeywords.push(keyword);
+      matched.push(keyword);
     } else {
-      missingKeywords.push(keyword);
+      missing.push(keyword);
     }
   });
 
-  // 4️⃣ Scoring
+  // 5️⃣ Scoring Strategy
+  // Max Score = 100
+  // Keywords = 80 points
+  // Sections = 20 points
+  
   let score = 0;
 
-  if (roleData.keywords.length > 0) {
-    score += (matchedKeywords.length / roleData.keywords.length) * 60;
+  // Keyword Score (Out of 80)
+  if (targetList.length > 0) {
+      score += (matched.length / targetList.length) * 80;
+  } else {
+      // If list is empty (rare edge case), give full points to be nice? 
+      // Or 0? Let's give 0 to prompt them to add keywords.
   }
 
+  // Formatting Score (Out of 20)
   if (sections.hasSkills) score += 5;
   if (sections.hasExperience) score += 5;
   if (sections.hasEducation) score += 5;
   if (sections.hasProjects) score += 5;
 
-  if (!customKeywords || customKeywords.length === 0) {
-      score = (score / 80) * 100;
-  }
-
   score = Math.min(100, Math.round(score));
 
-  // 5️⃣ Suggestions
-  const suggestions = [];
-  if (!sections.hasSkills) suggestions.push("Add a 'Skills' section.");
-  if (!sections.hasExperience) suggestions.push("Mention work experience.");
-  if (missingKeywords.length > 5) suggestions.push(`Add more keywords for ${roleData.title}.`);
-
+  // 6️⃣ Construct Response
+  // If Custom Mode: We return the matches in the 'custom' fields
+  // so the Frontend shows the correct cards.
   return {
     score,
     role: roleData.title,
-    matchedKeywords,
-    missingKeywords,
+    
+    // Standard Card (Empty if custom mode)
+    matchedKeywords: isCustomMode ? [] : matched,
+    missingKeywords: isCustomMode ? [] : missing,
+    
+    // Custom Card (Populated if custom mode)
+    matchedCustomKeywords: isCustomMode ? matched : [],
+    missingCustomKeywords: isCustomMode ? missing : [],
+    
     sectionsDetected: sections,
-    suggestions,
+    suggestions: missing.length > 0 
+        ? [`Add missing keywords: ${missing.slice(0, 3).join(', ')}`] 
+        : ["Great keyword match!"]
   };
 };
