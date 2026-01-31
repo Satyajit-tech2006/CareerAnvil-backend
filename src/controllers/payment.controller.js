@@ -128,7 +128,7 @@ export const adminVerifyPayment = asyncHandler(async (req, res) => {
         
         // C. Update CREDITS Model (Single Source of Truth)
         // Determine credit limits based on plan
-        const limit = payment.plan === "premium_pro" ? 100 : 50;
+        const limit = payment.plan === "premium_pro" ? 100 : 30;
         
         // Upsert Credits (Create if doesn't exist, Update if it does)
         await Credits.findOneAndUpdate(
